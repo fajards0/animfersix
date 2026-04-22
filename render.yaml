@@ -1,10 +1,10 @@
 services:
   - type: web
     name: animestream-web
-    env: docker
+    runtime: docker
     plan: starter
     dockerfilePath: ./Dockerfile
-    autoDeploy: true
+    autoDeployTrigger: commit
     healthCheckPath: /api/scraper-health
     envVars:
       - key: APP_NAME
@@ -37,19 +37,17 @@ services:
         value: "2"
       - key: OTAKUDESU_WARM_GENRES
         value: action,fantasy,romance,comedy,school,adventure
-      - key: APP_KEY
-        sync: false
     preDeployCommand: |
       php artisan migrate --force &&
       php artisan scraper:refresh-snapshots
 
   - type: cron
     name: animestream-scheduler
-    env: docker
+    runtime: docker
     plan: starter
     dockerfilePath: ./Dockerfile
     schedule: "*/10 * * * *"
-    command: php artisan schedule:run
+    dockerCommand: php artisan schedule:run
     envVars:
       - key: APP_NAME
         value: Fer6origami
@@ -81,8 +79,6 @@ services:
         value: "2"
       - key: OTAKUDESU_WARM_GENRES
         value: action,fantasy,romance,comedy,school,adventure
-      - key: APP_KEY
-        sync: false
 
 databases:
   - name: animestream-db
