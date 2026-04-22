@@ -1,0 +1,99 @@
+services:
+  - type: web
+    name: animestream-web
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /api/scraper-health
+    envVars:
+      - key: APP_NAME
+        value: Fer6origami
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        fromService:
+          type: web
+          name: animestream-web
+          property: url
+      - key: ASSET_URL
+        fromService:
+          type: web
+          name: animestream-web
+          property: url
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: CACHE_DRIVER
+        value: file
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: animestream-db
+          property: connectionString
+      - key: OTAKUDESU_DISABLE_PROXY
+        value: "true"
+      - key: OTAKUDESU_SOURCE_URL
+        value: https://otakudesu.best
+      - key: OTAKUDESU_WARM_PAGES
+        value: "2"
+      - key: OTAKUDESU_WARM_GENRES
+        value: action,fantasy,romance,comedy,school,adventure
+      - key: APP_KEY
+        sync: false
+    preDeployCommand: |
+      php artisan migrate --force &&
+      php artisan scraper:refresh-snapshots
+
+  - type: cron
+    name: animestream-scheduler
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    schedule: "*/10 * * * *"
+    command: php artisan schedule:run
+    envVars:
+      - key: APP_NAME
+        value: Fer6origami
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: CACHE_DRIVER
+        value: file
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: animestream-db
+          property: connectionString
+      - key: OTAKUDESU_DISABLE_PROXY
+        value: "true"
+      - key: OTAKUDESU_SOURCE_URL
+        value: https://otakudesu.best
+      - key: OTAKUDESU_WARM_PAGES
+        value: "2"
+      - key: OTAKUDESU_WARM_GENRES
+        value: action,fantasy,romance,comedy,school,adventure
+      - key: APP_KEY
+        sync: false
+
+databases:
+  - name: animestream-db
+    plan: starter
