@@ -2,6 +2,8 @@ FROM php:8.1-apache
 
 WORKDIR /var/www/html
 
+ENV PORT=8000
+
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -30,6 +32,6 @@ COPY docker/start.sh /usr/local/bin/start-render
 
 RUN chmod +x /usr/local/bin/start-render
 
-EXPOSE 10000
+EXPOSE 8000
 
 CMD ["start-render"]
