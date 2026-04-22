@@ -29,6 +29,20 @@ class OtakudesuApiService
             ->map(fn (array $item) => $this->normalizeAnimeSummary($item, 'completed'))
             ->map(fn (Fluent $anime) => $this->enrichAnimeImages($anime));
 
+        if ($ongoing->isEmpty()) {
+            $ongoing = collect(data_get($this->getCached('ongoing:1', 'ongoing/page/1'), 'animeList', []))
+                ->map(fn (array $item) => $this->normalizeAnimeSummary($item, 'ongoing'))
+                ->map(fn (Fluent $anime) => $this->enrichAnimeImages($anime))
+                ->values();
+        }
+
+        if ($complete->isEmpty()) {
+            $complete = collect(data_get($this->getCached('complete:1', 'complete/page/1'), 'animeList', []))
+                ->map(fn (array $item) => $this->normalizeAnimeSummary($item, 'completed'))
+                ->map(fn (Fluent $anime) => $this->enrichAnimeImages($anime))
+                ->values();
+        }
+
         return new Fluent([
             'trending' => $ongoing->take(6),
             'popular' => $complete->sortByDesc('score')->take(8)->values(),
@@ -1100,7 +1114,7 @@ class OtakudesuApiService
                 $response = $this->sourceClient($baseUrl)->get($path)->throw();
                 $html = $response->body();
 
-                if (trim($html) === '') {
+                if (trim($html) === '' || ! $this->isUsableSourceHtml($path, $html)) {
                     continue;
                 }
 
@@ -1121,6 +1135,47 @@ class OtakudesuApiService
         }
 
         throw $lastException ?: new \RuntimeException('Unable to load Otakudesu source page.');
+    }
+
+    private function isUsableSourceHtml(string $path, string $html): bool
+    {
+        $normalizedPath = '/' . ltrim($path, '/');
+        $haystack = Str::lower($html);
+
+        if (str_contains($haystack, 'blocked') || str_contains($haystack, 'access denied')) {
+            return false;
+        }
+
+        if ($normalizedPath === '/' || $normalizedPath === '') {
+            return str_contains($html, '/anime/') || str_contains($haystack, 'rseries') || str_contains($haystack, 'venz');
+        }
+
+        if ($normalizedPath === '/anime-list/') {
+            return str_contains($html, '/anime/');
+        }
+
+        if ($normalizedPath === '/genre-list/') {
+            return str_contains($html, '/genres/');
+        }
+
+        if (
+            str_contains($normalizedPath, '/ongoing-anime/')
+            || str_contains($normalizedPath, '/complete-anime/')
+            || str_contains($normalizedPath, '/genres/')
+            || str_starts_with($normalizedPath, '/search/')
+        ) {
+            return str_contains($html, '/anime/');
+        }
+
+        if (str_starts_with($normalizedPath, '/anime/')) {
+            return str_contains($html, '/eps/') || str_contains($haystack, 'episode') || str_contains($haystack, 'sinopsis');
+        }
+
+        if (str_starts_with($normalizedPath, '/episode/') || str_starts_with($normalizedPath, '/eps/')) {
+            return str_contains($haystack, 'mirrorstream') || str_contains($haystack, 'download') || str_contains($haystack, 'stream');
+        }
+
+        return true;
     }
 
     private function parsePosterListItems(\DOMXPath $xpath, string $query, ?\DOMNode $contextNode = null): array
