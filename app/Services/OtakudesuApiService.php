@@ -272,7 +272,7 @@ class OtakudesuApiService
 
     public function scraperHealth(): array
     {
-        $apiUrl = rtrim((string) config('services.otakudesu.base_url', 'http://127.0.0.1:3000/api'), '/');
+        $apiUrl = $this->apiBaseUrl();
         $sourceUrl = rtrim((string) config('services.otakudesu.source_url', 'https://otakudesu.best'), '/');
 
         return [
@@ -282,7 +282,13 @@ class OtakudesuApiService
                 'proxy_disabled' => (bool) config('services.otakudesu.disable_proxy', true),
             ],
             'checks' => [
-                'api' => $this->probe(fn () => $this->client()->get('home')),
+                'api' => $apiUrl !== ''
+                    ? $this->probe(fn () => $this->client()->get('home'))
+                    : [
+                        'ok' => false,
+                        'status' => null,
+                        'message' => 'disabled',
+                    ],
                 'source' => $this->probe(fn () => $this->sourceClient()->get('/')),
             ],
             'cache' => [
@@ -462,7 +468,7 @@ class OtakudesuApiService
     private function getCached(string $key, string $path): array
     {
         return Cache::remember('otakudesu:v4:' . $key, now()->addMinutes(10), function () use ($path) {
-            if (! Cache::get('otakudesu:api_unavailable')) {
+            if ($this->hasApiBaseUrl() && ! Cache::get('otakudesu:api_unavailable')) {
                 try {
                     $response = $this->get($path);
                     $this->storeSnapshot($path, $response);
@@ -1029,7 +1035,7 @@ class OtakudesuApiService
 
     private function client(): PendingRequest
     {
-        return Http::baseUrl(rtrim(config('services.otakudesu.base_url', 'http://127.0.0.1:3000/api'), '/'))
+        return Http::baseUrl($this->apiBaseUrl())
             ->acceptJson()
             ->withHeaders([
                 'User-Agent' => 'Fer6origami/1.0 (+Laravel)',
@@ -1037,6 +1043,22 @@ class OtakudesuApiService
             ->withOptions($this->httpOptions())
             ->connectTimeout(2)
             ->timeout(5);
+    }
+
+    private function hasApiBaseUrl(): bool
+    {
+        return $this->apiBaseUrl() !== '';
+    }
+
+    private function apiBaseUrl(): string
+    {
+        $baseUrl = trim((string) config('services.otakudesu.base_url', ''));
+
+        if (! filter_var($baseUrl, FILTER_VALIDATE_URL)) {
+            return '';
+        }
+
+        return rtrim($baseUrl, '/');
     }
 
     private function sourceClient(?string $baseUrl = null): PendingRequest
