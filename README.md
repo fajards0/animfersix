@@ -32,6 +32,7 @@ php artisan serve
 Important:
 - set one shared `APP_KEY` secret in Render and use the same value for both the web service and cron service
 - do not generate separate `APP_KEY` values per service
+- after the first deploy succeeds, set `APP_URL` and `ASSET_URL` manually in the Render web service to your live `.onrender.com` URL
 
 After the first deploy, Render will:
 - run migrations
