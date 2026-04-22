@@ -16,8 +16,34 @@ class HomeController extends Controller
 
     public function index(): View
     {
-        $home = $this->api->homeData();
-        $catalog = $this->api->catalog([], 1);
+        try {
+            $home = $this->api->homeData();
+        } catch (Throwable) {
+            $home = new \Illuminate\Support\Fluent([
+                'trending' => collect(),
+                'latestEpisodes' => collect(),
+                'popular' => collect(),
+                'ongoing' => collect(),
+                'complete' => collect(),
+            ]);
+        }
+
+        try {
+            $catalog = $this->api->catalog([], 1);
+        } catch (Throwable) {
+            $catalog = new \Illuminate\Support\Fluent([
+                'items' => collect(),
+                'pagination' => new \Illuminate\Support\Fluent([
+                    'paginator' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 48, 1),
+                ]),
+            ]);
+        }
+
+        try {
+            $genres = $this->api->getGenres();
+        } catch (Throwable) {
+            $genres = collect();
+        }
 
         return view('home', [
             'banners' => $this->banners(),
@@ -29,7 +55,7 @@ class HomeController extends Controller
             'catalogHighlights' => $catalog->items->take(12),
             'catalogTotal' => $catalog->pagination->paginator->total(),
             'filters' => [
-                'genres' => $this->api->getGenres(),
+                'genres' => $genres,
                 'statuses' => [
                     'ongoing' => 'Ongoing',
                     'completed' => 'Completed',
