@@ -7,6 +7,7 @@ ENV PORT=8000
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
+    libpq-dev \
     libzip-dev \
     libpng-dev \
     libjpeg62-turbo-dev \
